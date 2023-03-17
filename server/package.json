@@ -1,0 +1,14 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "Websocket server for unity client.",
+  "main": "server.js",
+  "scripts": {
+    "test": "server.js"
+  },
+  "author": "Piotr Bedkowski",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.13.0"
+  }
+}
