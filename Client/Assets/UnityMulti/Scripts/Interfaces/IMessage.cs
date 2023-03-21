@@ -4,11 +4,9 @@ using UnityEngine;
 
 public class MessageType
 {
-    public const string CONNECT = "connect";
-    public const string MESSAGE = "message";
-    public const string DISCONNECT = "disconnect";
     public const string GET_USER_DATA = "getUserData";
     public const string USER_DATA = "userData";
+    public const string REQUEST_USER_DATA = "requestUserData";
     //pozwala stworzyc now typy wiadomosci
     public string CUSTOM { get; set; }
 }
@@ -29,4 +27,15 @@ public class Message : IMessage
         this.Type = type;
         this.Content = content;
     }
+    public Message(string type)
+    {
+        this.Type = type;
+    }
+
+    public Message()
+    {
+
+    }
+
+    
 }

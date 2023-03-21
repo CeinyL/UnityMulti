@@ -7,11 +7,14 @@ const server = new WebSocket.Server({
 });
 
 console.log('Starting WebSocket server...');
+
 server.on('connection', (socket) => {
     console.log('Client connected');
-    socket.send('{"type":"userData", "content":"lol"}');
-    socket.on('message', (message) => {
-      console.log(`Received message: ${message}`);
+    console.log(messageHandler.startupMessage);
+    socket.send(JSON.stringify(messageHandler.startupMessage));
+
+    socket.on('message', async (message) => {
+      messageHandler.HandleMessage(message)
     });
   
     socket.on('close', () => {

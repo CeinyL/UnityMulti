@@ -4,34 +4,15 @@ using UnityEngine;
 
 public class User : MonoBehaviour
 {
-    public string username { get; private set; }
+    public string username { get; set; }
     public string userId { get; private set; }
 
-    public void SetUsername(string newUsername)
+    public void SetUserId(string userId)
     {
-        username = newUsername;
+        this.userId = userId;
     }
-
-    public void SetId(string newUserId)
-    {
-        userId = newUserId;
-    }
-
-    public void SetUserData(string username, string id)
+    public void SetUserName(string username)
     {
         this.username = username;
-        this.userId = id;
-    }
-
-    public User()
-    {
-        this.username = "";
-        this.userId = "";
-    }
-
-    public User(string username, string id)
-    {
-        this.username = username;
-        this.userId = id;
     }
 }

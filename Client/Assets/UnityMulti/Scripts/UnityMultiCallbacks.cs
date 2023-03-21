@@ -4,23 +4,28 @@ using UnityEngine;
 
 public class UnityMultiCallbacks : UnityMulti
 {
-    public new virtual void OnConnected()
+    public override void OnConnected()
     {
         base.OnConnected();
     }
 
-    public new virtual void OnMessage(string message)
+    public override void OnMessage(string message)
     {
         base.OnMessage(message);
     }
 
-    public new virtual void OnError(string error)
+    public override void OnError(string error)
     {
         base.OnError(error);
     }
 
-    public new virtual void OnDisconnected()
+    public override void OnDisconnected()
     {
         base.OnDisconnected();
+    }
+
+    public override void OnStateChanged()
+    {
+        base.OnStateChanged();
     }
 }

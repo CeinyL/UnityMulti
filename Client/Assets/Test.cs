@@ -6,17 +6,19 @@ public class Test : UnityMultiCallbacks
 {
 
     public string url = "ws://localhost:8080";
-    public User player;
+    User ja;
 
     void Start()
     {
-        Connect(url);
+        ja = new User();
+        ja.username = "Piotr";
+        Connect(url, ja);
+        //StartCoroutine(disc(5f));
     }
 
-    public override void OnConnected()
+    IEnumerator disc(float ile)
     {
-        base.OnConnected();
-        Debug.Log("I override the onconnected but i also use the base");
+        yield return new WaitForSeconds(ile);
+        Disconnect();
     }
-
 }
