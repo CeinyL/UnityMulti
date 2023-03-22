@@ -15,7 +15,7 @@ public class ConnectionHandler : MonoBehaviour, IDisposable
 
     public bool IsConnected => ws != null && ws.ReadyState == WebSocketState.Open;
 
-    public bool _autoReconnect;
+    public bool _autoReconnect = true;
     private bool _isReconnecting;
     public float ReconnectDelaySeconds = 5f;
     public int maxReconnectAttempt = 10;
@@ -39,7 +39,7 @@ public class ConnectionHandler : MonoBehaviour, IDisposable
         ws.OnError += (sender, error) =>
         {
             OnStateChanged?.Invoke();
-            OnError?.Invoke(error.Message);
+            OnError?.Invoke(error.Exception.ToString());
         };
 
         ws.OnClose += (sender, close) =>

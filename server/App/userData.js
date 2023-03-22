@@ -1,6 +1,6 @@
 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
-const createUserId = () => {
+const createUserId = async () => {
     let userId = '';
     for (let i = 0; i < 16; i++) {
       const randomIndex = Math.floor(Math.random() * chars.length);
@@ -9,7 +9,7 @@ const createUserId = () => {
     return userId;
 };
 
-const createUsername = () => {
+const createUsername = async () => {
     let username = '';
     for (let i = 0; i < 8; i++) {
       const randomIndex = Math.floor(Math.random() * chars.length);
@@ -19,10 +19,12 @@ const createUsername = () => {
 };
 
 let user = {
-    userId: createUserId(),
+    userId: '',
     username: '',
 };
 
 module.exports = {
-    user
+    user,
+    createUserId,
+    createUsername
   };

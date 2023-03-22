@@ -58,9 +58,6 @@ public class UnityMulti : MonoBehaviour
             Debug.Log(serverMessage.Type);
             switch (serverMessage.Type)
             {
-                case MessageType.REQUEST_USER_DATA:
-                    GetUserData();
-                    break;
                 case MessageType.USER_DATA:
                     SetUserData(rec_message);
                     break;
@@ -78,6 +75,7 @@ public class UnityMulti : MonoBehaviour
     public virtual void OnConnected()
     {
         Debug.Log("Connected to server.");
+        GetUserData();
     }
 
     public virtual void OnError(string error)

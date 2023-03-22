@@ -6,19 +6,15 @@ public class Test : UnityMultiCallbacks
 {
 
     public string url = "ws://localhost:8080";
-    User ja;
+    User player;
 
     void Start()
     {
-        ja = new User();
-        ja.username = "Piotr";
-        Connect(url, ja);
-        //StartCoroutine(disc(5f));
+        player = new User();
+        player.username = "Piotr";
+        Connect(url, player);
+        new WaitForSeconds(5f);
+        Debug.Log(userData.userId+" | "+ userData.username);
     }
 
-    IEnumerator disc(float ile)
-    {
-        yield return new WaitForSeconds(ile);
-        Disconnect();
-    }
 }
