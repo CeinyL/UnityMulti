@@ -37,7 +37,7 @@ public class UnityMulti : MonoBehaviour
         connection.OnDisconnected += OnDisconnected;
         connection.OnStateChanged += OnStateChanged;
         Debug.Log(connectionURL);
-        connection.Connect(connectionURL);
+        StartCoroutine(connection.Connect(connectionURL));
     }
 
     public void Disconnect()

@@ -21,7 +21,7 @@ public class ConnectionHandler : MonoBehaviour, IDisposable
     public int maxReconnectAttempt = 10;
     private int reconnectAttempt = 0;
 
-    public void Connect(string url)
+    public IEnumerator Connect(string url)
     {
         ws = new WebSocket(url);
 
@@ -57,7 +57,11 @@ public class ConnectionHandler : MonoBehaviour, IDisposable
             }
         };
 
-        ws.Connect();
+        while (!IsConnected)
+        {
+            ws.Connect();
+            yield return new WaitForSeconds(1f);
+        }
     }
 
     private IEnumerator Reconnect()
