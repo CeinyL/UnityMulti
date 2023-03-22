@@ -10,10 +10,8 @@ public class UnityMulti : MonoBehaviour
     protected User userData;
 
     public WebSocketState connectionState;
-    public bool AutoReconnect { get; set; } = true;
 
     private string connectionURL;
-    private bool wasConnected = false;
 
     public void Connect(string url)
     {
@@ -40,54 +38,11 @@ public class UnityMulti : MonoBehaviour
         connection.OnStateChanged += OnStateChanged;
         Debug.Log(connectionURL);
         connection.Connect(connectionURL);
-        wasConnected = true;
-    }
-
-    private Coroutine _reconnect = null;
-    private bool isReconnecting = false;
-    private int reconnectAttempts = 0;
-
-    private const int maxReconnectAttempts = 10;
-    private const float reconnectDelay = 5f;
-
-    public IEnumerator Reconnect()
-    {
-        isReconnecting = true;
-
-        while(reconnectAttempts < maxReconnectAttempts && !connection.IsConnected && isReconnecting)
-        {
-            Debug.Log("Reconnect attempts " + reconnectAttempts + 1 + "/" + maxReconnectAttempts);
-            CreateConnection();
-
-            yield return new WaitForSeconds(reconnectDelay);
-
-            reconnectAttempts++;
-        }
-
-        isReconnecting = false;
-        if(reconnectAttempts >= maxReconnectAttempts)
-        {
-            Debug.Log("Max reconnect attempts reached. ");
-        }
     }
 
     public void Disconnect()
     {
         connection.Dispose();
-    }
-
-    private void Update()
-    {
-        if (!isReconnecting && connection.ws.ReadyState == WebSocketState.Closed)
-        {
-            if (AutoReconnect && _reconnect == null)
-            {
-                if (wasConnected)
-                {
-                    _reconnect = StartCoroutine(Reconnect());
-                }
-            }
-        }
     }
 
     public new void SendMessage(string message)
@@ -119,6 +74,7 @@ public class UnityMulti : MonoBehaviour
         }
         
     }
+
     public virtual void OnConnected()
     {
         Debug.Log("Connected to server.");
