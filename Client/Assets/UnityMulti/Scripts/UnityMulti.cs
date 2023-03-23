@@ -37,7 +37,7 @@ public class UnityMulti : MonoBehaviour
         connection.OnDisconnected += OnDisconnected;
         connection.OnStateChanged += OnStateChanged;
         Debug.Log(connectionURL);
-        StartCoroutine(connection.Connect(connectionURL));
+        connection.Connect(connectionURL);
     }
 
     public void Disconnect()
@@ -107,6 +107,7 @@ public class UnityMulti : MonoBehaviour
 
         getData.Content = JsonConvert.SerializeObject(userData);
 
+        Debug.Log("Sending data" + JsonConvert.SerializeObject(getData));
         SendMessage(JsonConvert.SerializeObject(getData));
     }
 

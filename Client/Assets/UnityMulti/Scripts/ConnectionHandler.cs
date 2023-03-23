@@ -17,11 +17,11 @@ public class ConnectionHandler : MonoBehaviour, IDisposable
 
     public bool _autoReconnect = true;
     private bool _isReconnecting;
-    public float ReconnectDelaySeconds = 5f;
+    public float ReconnectDelaySeconds = 10f;
     public int maxReconnectAttempt = 10;
     private int reconnectAttempt = 0;
 
-    public IEnumerator Connect(string url)
+    public void Connect(string url)
     {
         ws = new WebSocket(url);
 
@@ -52,26 +52,22 @@ public class ConnectionHandler : MonoBehaviour, IDisposable
                 if (_autoReconnect)
                 {
                     _isReconnecting = true;
-                    StartCoroutine(Reconnect());
+                    Reconnect();
                 }
             }
         };
 
-        while (!IsConnected)
-        {
-            ws.Connect();
-            yield return new WaitForSeconds(1f);
-        }
+        ws.Connect();
     }
 
-    private IEnumerator Reconnect()
+    private void Reconnect()
     {
-        while (_isReconnecting && reconnectAttempt < maxReconnectAttempt)
+        while (_isReconnecting && reconnectAttempt < maxReconnectAttempt && !IsConnected)
         {
-            Debug.Log("Attempting to reconnect... " + reconnectAttempt + 1 + "/" + maxReconnectAttempt);
+            Debug.Log("Attempting to reconnect... " + reconnectAttempt + "/" + maxReconnectAttempt);
             Connect(ws.Url.ToString());
 
-            yield return new WaitForSeconds(ReconnectDelaySeconds);
+            new WaitForSeconds(ReconnectDelaySeconds);
             reconnectAttempt++;
         }
 
