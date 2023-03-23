@@ -64,7 +64,7 @@ public class ConnectionHandler : MonoBehaviour, IDisposable
     {
         while (_isReconnecting && reconnectAttempt < maxReconnectAttempt && !IsConnected)
         {
-            Debug.Log("Attempting to reconnect... " + reconnectAttempt + "/" + maxReconnectAttempt);
+            Debug.Log("Attempting to reconnect... " + (reconnectAttempt+1) + "/" + maxReconnectAttempt);
             Connect(ws.Url.ToString());
 
             new WaitForSeconds(ReconnectDelaySeconds);
@@ -73,14 +73,11 @@ public class ConnectionHandler : MonoBehaviour, IDisposable
 
         if(reconnectAttempt >= maxReconnectAttempt)
         {
-            StopReconnecting();
             Debug.LogWarning("Reached max reconnect attempts: " + maxReconnectAttempt);
         }
-    }
 
-    public void StopReconnecting()
-    {
         _isReconnecting = false;
+        reconnectAttempt = 0;
     }
 
     public new void SendMessage(string message)
