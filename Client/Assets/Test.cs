@@ -13,8 +13,6 @@ public class Test : UnityMultiCallbacks
         player = new User();
         player.username = "Piotr";
         Connect(url, player);
-        new WaitForSeconds(5f);
-        Debug.Log(userData.userId+" | "+ userData.username);
     }
 
 }

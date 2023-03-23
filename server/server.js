@@ -13,9 +13,9 @@ let message = {
 const clientsLoop = async () => {
   while(true){
     for (const userId in clients) {
-      console.log(clients[userId]);
+      console.log(""+clients[userId].userId);
     }
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 5000));
   }
 };
 
@@ -31,8 +31,9 @@ console.log('Starting WebSocket server...');
 server.on('connection', (socket) => {
     console.log('Client connected');
 
-    socket.on('message', async (socket, message) => {
-      HandleMessage(socket, message)
+    socket.on('message', async (data) => {
+      console.log(data);
+      HandleMessage(socket, data);
     });
   
     socket.on('close', (socket) => {
@@ -60,7 +61,7 @@ const HandleMessage = async (socket, data) => {
     }
 };
 
-const getUserData = async (Socket, Content) => {
+const getUserData = async (socket, Content) => {
     let user = userData.user;
     user = JSON.parse(Content);
 
@@ -69,7 +70,7 @@ const getUserData = async (Socket, Content) => {
 
     console.log('Adding new client to dictionary');
     clients[user.userId] = {
-      socket: Socket,
+      socket: socket,
       userId: user.userId
     };
 

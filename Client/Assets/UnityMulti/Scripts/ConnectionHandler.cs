@@ -1,9 +1,10 @@
 using System;
 using System.Collections;
+using UnityEditor;
 using UnityEngine;
 using WebSocketSharp;
 
-public class ConnectionHandler : MonoBehaviour, IDisposable
+public class ConnectionHandler : IDisposable
 {
     public WebSocket ws;
 
@@ -51,8 +52,10 @@ public class ConnectionHandler : MonoBehaviour, IDisposable
             {
                 if (_autoReconnect)
                 {
-                    _isReconnecting = true;
-                    Reconnect();
+                    if (Application.isPlaying) {
+                        _isReconnecting = true;
+                        Reconnect();
+                    }
                 }
             }
         };
@@ -80,7 +83,7 @@ public class ConnectionHandler : MonoBehaviour, IDisposable
         reconnectAttempt = 0;
     }
 
-    public new void SendMessage(string message)
+    public void SendMessage(string message)
     {
         if (IsConnected)
         {

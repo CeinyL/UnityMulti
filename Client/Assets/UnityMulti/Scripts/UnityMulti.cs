@@ -3,6 +3,7 @@ using UnityEngine;
 using Newtonsoft.Json;
 using WebSocketSharp;
 using System.Collections;
+using UnityEditor;
 
 public class UnityMulti : MonoBehaviour
 {
@@ -116,7 +117,17 @@ public class UnityMulti : MonoBehaviour
         Message data = JsonConvert.DeserializeObject<Message>(rec_message);
         User serverUserData = JsonConvert.DeserializeObject<User>(data.Content);
 
+        Debug.Log(serverUserData.userId);
+        Debug.Log(serverUserData.username);
+
         if (userData.userId != serverUserData.userId) userData.SetUserId(serverUserData.userId);
         if (userData.username != serverUserData.username) userData.SetUserName(serverUserData.username);
+
+        Debug.Log(userData.userId + "|" + userData.username);
+    }
+
+    private void OnDisable()
+    {
+        Disconnect();
     }
 }
