@@ -14,6 +14,15 @@ public class UnityMulti : MonoBehaviour
 
     private string connectionURL;
 
+    private void OnGUI()
+    {
+        
+        if (GUILayout.Button("SND MSG"))
+        {
+            connection.ws.Send("testmsg");
+        }
+    }
+
     public void Connect(string url)
     {
         connectionURL = url;
