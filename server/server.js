@@ -10,6 +10,11 @@ let message = {
   Content: ""
 };
 
+const server = new WebSocket.Server({
+  host: '192.168.1.12',
+  port: 8080
+});
+
 const clientsLoop = async () => {
   while(true){
     for (const userId in clients) {
@@ -19,20 +24,24 @@ const clientsLoop = async () => {
   }
 };
 
-clientsLoop();
-
-const server = new WebSocket.Server({
-    host: 'localhost',
-    port: 8080
+process.argv.forEach(function (val, index, array) {
+  if(index==2&&val=="remote")  server.host='192.168.1.12';
+  else server.host='localhost';
 });
 
-console.log('Starting WebSocket server...');
+
+clientsLoop();
+
+
+
+
+console.log('Starting WebSocket server: '+server.host);
+
 
 server.on('connection', (socket) => {
     console.log('Client connected');
 
     socket.on('message', async (data) => {
-      console.log(data);
       HandleMessage(socket, data);
     });
   
@@ -48,17 +57,29 @@ server.on('connection', (socket) => {
 });
 
 const HandleMessage = async (socket, data) => {
-    message = JSON.parse(data);
-    console.log(message);
-    console.log(message.Type);
-    switch(message.Type){
+    
+    try {
+      message = JSON.parse(data);
+      console.log(message);
+      console.log(message.Type);
+      switch(message.Type){
         case "getUserData":
             console.log('GetUserData message');
             await getUserData(socket, message.Content);
             break;
         default:
+            console.log('Invalid message');
             break;
+
+      }
     }
+    catch (e)
+    {
+      //console.log(e);
+      //console.log(data);
+      //console.log(socket);
+    }
+
 };
 
 const getUserData = async (socket, Content) => {
