@@ -6,7 +6,7 @@ using WebSocketSharp;
 
 public class ConnectionHandler : IDisposable
 {
-    public WebSocket ws;
+    private WebSocket ws;
 
     public Action OnConnected;
     public Action<string> OnMessageReceived;
@@ -18,9 +18,11 @@ public class ConnectionHandler : IDisposable
 
     public bool _autoReconnect = true;
     private bool _isReconnecting;
+    public bool _isAppPlaying = false;
     public float ReconnectDelaySeconds = 10f;
     public int maxReconnectAttempt = 10;
     private int reconnectAttempt = 0;
+    
 
     public void Connect(string url)
     {
@@ -52,10 +54,8 @@ public class ConnectionHandler : IDisposable
             {
                 if (_autoReconnect)
                 {
-                    if (Application.isPlaying) {
-                        _isReconnecting = true;
-                        Reconnect();
-                    }
+                    _isReconnecting = true;
+                    Reconnect();
                 }
             }
         };
@@ -65,7 +65,7 @@ public class ConnectionHandler : IDisposable
 
     private void Reconnect()
     {
-        while (_isReconnecting && reconnectAttempt < maxReconnectAttempt && !IsConnected)
+        while (_isReconnecting && reconnectAttempt < maxReconnectAttempt && !IsConnected && _isAppPlaying)
         {
             Debug.Log("Attempting to reconnect... " + (reconnectAttempt+1) + "/" + maxReconnectAttempt);
             Connect(ws.Url.ToString());

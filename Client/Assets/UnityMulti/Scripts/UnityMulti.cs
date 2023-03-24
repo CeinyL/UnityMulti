@@ -14,15 +14,6 @@ public class UnityMulti : MonoBehaviour
 
     private string connectionURL;
 
-    private void OnGUI()
-    {
-        
-        if (GUILayout.Button("SND MSG"))
-        {
-            connection.ws.Send("testmsg");
-        }
-    }
-
     public void Connect(string url)
     {
         connectionURL = url;
@@ -50,6 +41,13 @@ public class UnityMulti : MonoBehaviour
         connection.Connect(connectionURL);
     }
 
+    private void Update()
+    {
+        if (EditorApplication.isPlaying){
+            connection._isAppPlaying = true;
+        }
+    }
+
     public void Disconnect()
     {
         connection.Dispose();
@@ -60,7 +58,6 @@ public class UnityMulti : MonoBehaviour
         connection.SendMessage(message);
     }
 
-    //getting some error from server message
     public virtual void OnMessage(string rec_message)
     {
         try {
@@ -109,6 +106,7 @@ public class UnityMulti : MonoBehaviour
         {
             connection.Dispose();
         }
+        connection._isAppPlaying = false;
     }
 
     private void GetUserData()

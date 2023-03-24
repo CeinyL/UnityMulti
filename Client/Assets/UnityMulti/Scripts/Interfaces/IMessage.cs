@@ -7,7 +7,6 @@ public class MessageType
     public const string GET_USER_DATA = "getUserData";
     public const string USER_DATA = "userData";
     public const string REQUEST_USER_DATA = "requestUserData";
-    //pozwala stworzyc now typy wiadomosci
     public string CUSTOM { get; set; }
 }
 

@@ -11,7 +11,7 @@ let message = {
 };
 
 const server = new WebSocket.Server({
-  host: '192.168.1.12',
+  host: 'localhost',
   port: 8080
 });
 
@@ -45,7 +45,7 @@ server.on('connection', (socket) => {
       HandleMessage(socket, data);
     });
   
-    socket.on('close', (socket) => {
+    socket.on('close', () => {
       console.log('Client disconnected');
       for (let userId in clients) {
         if (clients[userId].socket === socket) {
@@ -109,5 +109,4 @@ const getUserData = async (socket, Content) => {
       }
     }
 
-    return 0;
 };
