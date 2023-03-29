@@ -6,6 +6,7 @@ using WebSocketSharp;
 
 public class ConnectionHandler : IDisposable
 {
+    private static ConnectionHandler _instance;
     private WebSocket ws;
 
     public Action OnConnected;
@@ -22,7 +23,22 @@ public class ConnectionHandler : IDisposable
     public float ReconnectDelaySeconds = 10f;
     public int maxReconnectAttempt = 10;
     private int reconnectAttempt = 0;
-    
+
+    private ConnectionHandler()
+    {
+    }
+
+    public static ConnectionHandler Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                _instance = new ConnectionHandler();
+            }
+            return _instance;
+        }
+    }
 
     public void Connect(string url)
     {
@@ -50,7 +66,7 @@ public class ConnectionHandler : IDisposable
             OnStateChanged?.Invoke();
             OnDisconnected?.Invoke();
 
-            if(!_isReconnecting && close.Code != 1000)
+            if (!_isReconnecting && close.Code != 1000)
             {
                 if (_autoReconnect)
                 {
@@ -67,14 +83,14 @@ public class ConnectionHandler : IDisposable
     {
         while (_isReconnecting && reconnectAttempt < maxReconnectAttempt && !IsConnected && _isAppPlaying)
         {
-            Debug.Log("Attempting to reconnect... " + (reconnectAttempt+1) + "/" + maxReconnectAttempt);
+            Debug.Log("Attempting to reconnect... " + (reconnectAttempt + 1) + "/" + maxReconnectAttempt);
             Connect(ws.Url.ToString());
 
             new WaitForSeconds(ReconnectDelaySeconds);
             reconnectAttempt++;
         }
 
-        if(reconnectAttempt >= maxReconnectAttempt)
+        if (reconnectAttempt >= maxReconnectAttempt)
         {
             Debug.LogWarning("Reached max reconnect attempts: " + maxReconnectAttempt);
         }
@@ -94,7 +110,7 @@ public class ConnectionHandler : IDisposable
     public void Dispose()
     {
         if (ws != null && ws.ReadyState == WebSocketState.Open)
-        {   
+        {
             ws.Close(1000, "Intentional disconnect");
             OnStateChanged?.Invoke();
         }

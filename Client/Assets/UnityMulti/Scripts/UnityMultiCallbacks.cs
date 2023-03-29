@@ -29,4 +29,8 @@ public class UnityMultiCallbacks : UnityMulti
         base.OnStateChanged();
     }
 
+    public override void HandleCustomMessage(Message message)
+    {
+        base.HandleCustomMessage(message);
+    }
 }

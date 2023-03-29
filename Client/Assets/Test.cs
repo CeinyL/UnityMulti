@@ -5,13 +5,15 @@ using UnityEngine;
 public class Test : UnityMultiCallbacks
 {
     public string url = "ws://localhost:8080";
-    User player;
-
+    // Start is called before the first frame update
     void Start()
     {
-        player = new User();
-        player.username = "Piotr";
-        Connect(url, player);
+        Connect(url);
     }
-    
+
+    // Update is called once per frame
+    void Update()
+    {
+        
+    }
 }

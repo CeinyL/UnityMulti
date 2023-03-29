@@ -1,13 +1,14 @@
 const WebSocket = require('ws');
 const userData = require('./App/userData');
+const messageTypes = require('./App/messageTypes');
 
 let clients = {
 
 };
 
 let message = {
-  Type: "",
-  Content: ""
+  Type: '',
+  Content: ''
 };
 
 const server = new WebSocket.Server({
@@ -32,9 +33,6 @@ process.argv.forEach(function (val, index, array) {
 
 clientsLoop();
 
-
-
-
 console.log('Starting WebSocket server: '+server.host);
 
 
@@ -56,30 +54,66 @@ server.on('connection', (socket) => {
     });
 });
 
-const HandleMessage = async (socket, data) => {
-    
-    try {
-      message = JSON.parse(data);
-      console.log(message);
-      console.log(message.Type);
-      switch(message.Type){
-        case "getUserData":
-            console.log('GetUserData message');
-            await getUserData(socket, message.Content);
-            break;
-        default:
-            console.log('Invalid message');
-            break;
-
-      }
+const HandleMessage = async (socket, message) => { 
+  try {
+    const serverMessage = JSON.parse(message);
+    switch (serverMessage.Type) {
+      case messageTypes.PING:
+        HandlePing(socket);
+        break;
+      case messageTypes.CONNECT:
+        // handle connect message
+        break;
+      case messageTypes.DISCONNECT:
+        // handle disconnect message
+        break;
+      case messageTypes.USER_DATA_REQUEST:
+        // handle user data request message
+        break;
+      case messageTypes.USER_DATA_RESPONSE:
+        // handle user data response message
+        break;
+      case messageTypes.GAME_STATE:
+        // handle game state message
+        break;
+      case messageTypes.PLAYER_POSITION:
+        // handle player position message
+        break;
+      case messageTypes.PLAYER_ROTATION:
+        // handle player rotation message
+        break;
+      case messageTypes.PLAYER_SCALE:
+        // handle player scale message
+        break;
+      case messageTypes.SERVER_STATUS:
+        // handle server status message
+        break;
+      case messageTypes.CHAT_MESSAGE:
+        // handle chat message
+        break;
+      case messageTypes.SERVER_MESSAGE:
+        // handle server message
+        break;
+      default:
+        if (messageTypes.CUSTOM.includes(serverMessage.type)) {
+          // handle custom message type
+        } else {
+          // unknown message type
+        }
+        break;
     }
-    catch (e)
-    {
-      //console.log(e);
-      //console.log(data);
-      //console.log(socket);
-    }
+  } catch (e) {
+    console.error('Received message error:', e.message, '\nMessage from server:', message);
+  }
+};
 
+const HandlePing = async (socket) => {
+  message = {
+    type: messageTypes.PONG,
+    timestamp: Date.now(),
+  };
+
+  socket.send(JSON.stringify(message));
 };
 
 const getUserData = async (socket, Content) => {
