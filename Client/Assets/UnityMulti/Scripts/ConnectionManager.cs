@@ -113,11 +113,9 @@ public class ConnectionManager : MonoBehaviour, IDisposable
 
     public void Dispose()
     {
-        Debug.Log("Dispose called");
         if (ws != null && ws.ReadyState == WebSocketState.Open)
         {
             ws.Close(1000, "Intentional disconnect");
-            Debug.Log("Intentional disconnect");
             OnStateChanged?.Invoke();
         }
     }

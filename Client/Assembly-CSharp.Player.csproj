@@ -57,16 +57,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\UnityMulti\Scripts\Interfaces\IDisposable.cs" />
-    <Compile Include="Assets\UnityMulti\Scripts\UnityMulti.cs" />
+    <Compile Include="Assets\UnityMulti\Scripts\old\UnityMulti.cs" />
+    <Compile Include="Assets\UnityMulti\Scripts\ConnectionManager.cs" />
     <Compile Include="Assets\Test2.cs" />
+    <Compile Include="Assets\UnityMulti\Scripts\UnityMultiNetworking.cs" />
     <Compile Include="Assets\UnityMulti\Scripts\User.cs" />
     <Compile Include="Assets\UnityMulti\Scripts\Interfaces\IMessage.cs" />
     <Compile Include="Assets\Test.cs" />
-    <Compile Include="Assets\UnityMulti\Scripts\UnityMultiCallbacks.cs" />
-    <Compile Include="Assets\UnityMulti\Scripts\ConnectionHandler.cs" />
-    <Compile Include="Assets\UnityMulti\Scripts\ConnectionManager.cs" />
-    <Compile Include="Assets\UnityMulti\Scripts\UnityMultiNetworking.cs" />
+    <Compile Include="Assets\UnityMulti\Scripts\old\UnityMultiCallbacks.cs" />
     <Compile Include="Assets\UnityMulti\Scripts\UnityMultiNetworkingCallbacks.cs" />
+    <Compile Include="Assets\UnityMulti\Scripts\old\ConnectionHandler.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\UnityMulti\Libraries\websocket-sharp.dll" />

@@ -309,7 +309,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   multiNetworking: {fileID: 0}
-  url: ws://localhost:8080
+  url: ws://46.205.209.59:8080
   ms: 0
 --- !u!1 &963194225
 GameObject:

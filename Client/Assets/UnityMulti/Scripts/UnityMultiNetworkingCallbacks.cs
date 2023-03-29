@@ -9,16 +9,13 @@ public class UnityMultiNetworkingCallbacks : MonoBehaviour
 {
     [HideInInspector]
     public UnityMultiNetworking multiNetworking;
-    private long pingTimestamp;
-    public long latency { get; private set; }
+    
     [HideInInspector]
     public List<string> customMessageTypes { get; private set; } = new List<string>();
-    [HideInInspector]
-    public bool isConnectionReady { get; private set; } = false;
 
     private void Awake()
     {
-        multiNetworking = UnityMultiNetworking.Instance;
+        multiNetworking = UnityMultiNetworking.CreateInstance();
         multiNetworking.OnServerMessage += OnServerMessage;
         multiNetworking.OnClientError += OnClientError;
         multiNetworking.OnClientConnected += OnClientConnected;
@@ -34,7 +31,7 @@ public class UnityMultiNetworkingCallbacks : MonoBehaviour
             switch (serverMessage.Type)
             {
                 case MessageType.PONG:
-                    HandlePong(serverMessage.Content);
+                    multiNetworking.HandlePong(serverMessage.Content);
                     break;
                 case MessageType.CONNECT:
                     // handle connect message
@@ -89,14 +86,12 @@ public class UnityMultiNetworkingCallbacks : MonoBehaviour
 
     public virtual void OnClientError(string error)
     {
-        Debug.LogError("Error: " + error);
+        Debug.Log("Error: " + error);
     }
 
     public virtual void OnClientConnected()
     {
         Debug.Log("Connected to server.");
-        isConnectionReady = true;
-        InvokeRepeating("SendPing", 1f, 1f);
     }
 
     public virtual void OnClientDisconnected()
@@ -137,23 +132,5 @@ public class UnityMultiNetworkingCallbacks : MonoBehaviour
 
         Debug.Log(multiNetworking.userData.userId + "|" + multiNetworking.userData.username);
     }
-
-    private void SendPing()
-    {
-        if (multiNetworking.connection.IsConnected && isConnectionReady)
-        {
-            Message pingMessage = new Message(MessageType.PING, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
-
-            multiNetworking.connection.SendMessage(JsonConvert.SerializeObject(pingMessage));
-
-            pingTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        }
-    }
-
-    private void HandlePong(string serverMessage)
-    {
-        latency = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - pingTimestamp;
-    }
-
 
 }

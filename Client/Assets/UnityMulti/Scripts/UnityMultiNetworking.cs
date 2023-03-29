@@ -4,6 +4,7 @@ using UnityEngine;
 using WebSocketSharp;
 using System;
 using UnityEditor;
+using Newtonsoft.Json;
 
 public class UnityMultiNetworking : MonoBehaviour
 {
@@ -14,6 +15,11 @@ public class UnityMultiNetworking : MonoBehaviour
 
     public string connectionURL { get; private set; }
     private WebSocketState connectionState;
+    private long pingTimestamp;
+    public long latency;
+    [HideInInspector]
+    public bool isConnectionReady { get; private set; } = false;
+    private bool isDisconnecting = false;
 
     public delegate void ServerMessageHandler(string message);
     public event ServerMessageHandler OnServerMessage;
@@ -45,6 +51,17 @@ public class UnityMultiNetworking : MonoBehaviour
             }
             return _instance;
         }
+        private set { }
+    }
+
+    public static UnityMultiNetworking CreateInstance()
+    {
+        if (Instance == null)
+        {
+            GameObject obj = new GameObject("ConnectionManager");
+            Instance = obj.AddComponent<UnityMultiNetworking>();
+        }
+        return Instance;
     }
 
     public void Connect(string url)
@@ -74,7 +91,6 @@ public class UnityMultiNetworking : MonoBehaviour
 
     public void Disconnect()
     {
-        Debug.Log("Disconnect called");
         connection.Dispose();
     }
 
@@ -90,8 +106,9 @@ public class UnityMultiNetworking : MonoBehaviour
 
     public virtual void OnConnected()
     {
+        isConnectionReady = true;
         OnClientConnected?.Invoke();
-        
+        InvokeRepeating("SendPing", 1f, 1f);
     }
 
     public virtual void OnError(string error)
@@ -110,15 +127,51 @@ public class UnityMultiNetworking : MonoBehaviour
         OnConnectionStateChange?.Invoke(connectionState);
     }
 
-    public void OnApplicationQuit()
+    private void OnApplicationQuit()
     {
-        Debug.Log("on app quit");
-        Disconnect();
+        if (!isDisconnecting)
+        {
+            isDisconnecting = true;
+            Disconnect();
+        }
     }
 
-    public void OnDisable()
+    private void OnDisable()
     {
-        Debug.Log("on disable");
-        Disconnect();
+        if (!isDisconnecting)
+        {
+            isDisconnecting = true;
+            Disconnect();
+        }
+    }
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    private void SendPing()
+    {
+        if (connection.IsConnected && isConnectionReady)
+        {
+            Message pingMessage = new Message(MessageType.PING, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
+
+            connection.SendMessage(JsonConvert.SerializeObject(pingMessage));
+
+            pingTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        }
+    }
+
+    public void HandlePong(string serverMessage)
+    {
+        latency = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - pingTimestamp;
     }
 }
