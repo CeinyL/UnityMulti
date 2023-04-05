@@ -17,4 +17,10 @@ public class Test2 : UnityMultiNetworkingCallbacks
     {
         this.ms = multiNetworking.latency;
     }
+
+    public override void OnClientConnected()
+    {
+        base.OnClientConnected();
+        Debug.Log("override with base");
+    }
 }
