@@ -57,6 +57,7 @@ server.on('connection', (socket) => {
 const HandleMessage = async (socket, message) => { 
   try {
     const serverMessage = JSON.parse(message);
+    console.log(serverMessage);
     switch (serverMessage.Type) {
       case messageTypes.PING:
         HandlePing(socket);

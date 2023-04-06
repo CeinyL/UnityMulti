@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -5,9 +7,7 @@ using WebSocketSharp;
 
 public class UnityMultiNetworkingCallbacks : MonoBehaviour
 {
-    [HideInInspector]
     public UnityMultiNetworking multiNetworking;
-    
     [HideInInspector]
     public List<string> customMessageTypes { get; private set; } = new List<string>();
 
@@ -16,11 +16,12 @@ public class UnityMultiNetworkingCallbacks : MonoBehaviour
     private void Awake()
     {
         multiNetworking = UnityMultiNetworking.CreateInstance();
-        multiNetworking.OnCustomMessage += OnCustomMessage;
-        multiNetworking.OnClientError += OnClientError;
-        multiNetworking.OnClientConnected += OnClientConnected;
-        multiNetworking.OnClientDisconnected += OnClientDisconnected;
-        multiNetworking.OnConnectionStateChange += OnConnectionStateChange;
+        multiNetworking.CustomMessage += OnCustomMessage;
+        multiNetworking.ClientError += OnClientError;
+        multiNetworking.ClientConnected += OnClientConnected;
+        multiNetworking.ClientDisconnected += OnClientDisconnected;
+        multiNetworking.ConnectionStateChange += OnConnectionStateChange;
+        multiNetworking.InitialConnection += OnInitialConnection;
     }
 
     public virtual void OnClientError(ErrorEventArgs error)
@@ -34,7 +35,6 @@ public class UnityMultiNetworkingCallbacks : MonoBehaviour
     public virtual void OnClientConnected()
     {
         Debug.Log("Connected to server.");
-        StartCoroutine(Lol());
     }
 
     public virtual void OnClientDisconnected()
@@ -52,10 +52,8 @@ public class UnityMultiNetworkingCallbacks : MonoBehaviour
         connectionState = multiNetworking.getState();
     }
 
-    public IEnumerator Lol()
+    public virtual void OnInitialConnection()
     {
-        Debug.Log("korutynka");
-        yield return new WaitForSeconds(1f);
-        Debug.Log("korutynka po sekundzie");
+        Debug.Log("Validating user data");
     }
 }

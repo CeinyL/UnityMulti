@@ -10,11 +10,12 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
 {
     #region variables
     private static UnityMultiNetworking _instance;
+
     //private UnityMainThreadDispatcher ThreadDispatcher = UnityMainThreadDispatcher.Instance();
     private WebSocket ws;
-    public User userData { get; private set; }
+    public User clientData { get; private set; }
 
-    private bool IsConnected => ws != null && ws.ReadyState == WebSocketState.Open;
+    public bool IsConnected => ws != null && ws.ReadyState == WebSocketState.Open;
 
     public bool _autoReconnect = true;
     private bool _isReconnecting;
@@ -22,34 +23,37 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
     public int maxReconnectAttempt = 10;
     private int reconnectAttempt = 0;
 
+    public static GameObject UnityMultiObject;
+
     public string connectionURL { get; private set; }
-    private  long pingTimestamp;
-    public long latency = 0;
+    [HideInInspector]
+    public long pingTimestamp;
+    private long latency;
     private bool isConnectionReady = false;
     private bool isDisconnecting = false;
-
+    private bool isValidated = false;
     #endregion
 
     #region events
 
-    public delegate void ServerMessageHandler(Message serverMessage);
-    public event ServerMessageHandler OnCustomMessage;
+    public delegate void ServerMessageEvent(Message serverMessage);
+    public event ServerMessageEvent CustomMessage;
 
-    public delegate void ErrorHandler(ErrorEventArgs error);
-    public event ErrorHandler OnClientError;
+    public delegate void ErrorEvent(ErrorEventArgs error);
+    public event ErrorEvent ClientError;
 
-    public delegate void ConnectedHandler();
-    public event ConnectedHandler OnClientConnected;
+    public delegate void ConnectedEvent();
+    public event ConnectedEvent ClientConnected;
 
-    public delegate void DisconnectedHandler();
-    public event DisconnectedHandler OnClientDisconnected;
+    public delegate void DisconnectedEvent();
+    public event DisconnectedEvent ClientDisconnected;
 
-    public delegate void ConnectionStateHandler();
-    public event ConnectionStateHandler OnConnectionStateChange;
+    public delegate void ConnectionStateEvent();
+    public event ConnectionStateEvent ConnectionStateChange;
 
-    private delegate void CoroutineStarter();
-    private CoroutineStarter StartPinging;
-    private CoroutineStarter StartReconnect;
+    public delegate void InitialConnectionEvent();
+    public event InitialConnectionEvent InitialConnection;
+
     #endregion
 
     #region UnityMultiNetworking
@@ -75,8 +79,8 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
     {
         if (Instance == null)
         {
-            GameObject obj = new GameObject("UnityNetworking");
-            Instance = obj.AddComponent<UnityMultiNetworking>();
+            UnityMultiObject = new GameObject("UnityNetworking");
+            Instance = UnityMultiObject.AddComponent<UnityMultiNetworking>();
         }
         return Instance;
     }
@@ -101,18 +105,19 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
         {
             Destroy(gameObject);
         }
-        StartPinging += () => StartCoroutine(SendPing());
-        StartReconnect += () => StartCoroutine(Reconnect());
     }
 
+    private void Update()
+    {
+    }
     #endregion
 
     #region connection
 
-    public void Connect(string url)
+    public void Connect(string url, string username)
     {
         connectionURL = url;
-        userData = new User();
+        clientData = new User(username);
         CreateConnection();
     }
 
@@ -122,77 +127,66 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
 
         ws.OnOpen += (sender, args) =>
         {
-            UnityMainThreadDispatcher.Instance().Enqueue(() => OnClientConnected?.Invoke());
-            UnityMainThreadDispatcher.Instance().Enqueue(() => OnConnectionStateChange?.Invoke());
+            UnityMainThreadDispatcher.Instance().Enqueue(() => InitialConnection?.Invoke());
+            UnityMainThreadDispatcher.Instance().Enqueue(() => ConnectionStateChange?.Invoke());
             UnityMainThreadDispatcher.Instance().Enqueue(() => RequestValidation());
-            UnityMainThreadDispatcher.Instance().Enqueue(() => StartPinging?.Invoke());
-            //ThreadDispatcher.Enqueue(() => {
-            //    OnClientConnected?.Invoke();
-            //    OnConnectionStateChange?.Invoke();
-            //    RequestValidation();
-            //    SendPing();
-            //});
+            //UnityMainThreadDispatcher.Instance().Enqueue(() => StartPinging?.Invoke());
         };
 
         ws.OnMessage += (sender, message) =>
         {
-            UnityMainThreadDispatcher.Instance().Enqueue(() => OnServerMessage(message.Data));
-            //ThreadDispatcher.Enqueue(() => {
-            //    OnServerMessage(message.Data);
-            //});
-            
+            UnityMainThreadDispatcher.Instance().Enqueue(() => OnServerMessage(message.Data));          
         };
 
         ws.OnError += (sender, error) =>
         {
-            UnityMainThreadDispatcher.Instance().Enqueue(() => OnClientError?.Invoke(error));
-            UnityMainThreadDispatcher.Instance().Enqueue(() => OnConnectionStateChange?.Invoke());
-            UnityMainThreadDispatcher.Instance().Enqueue(() => {
-                OnClientError?.Invoke(error);
-                OnConnectionStateChange?.Invoke();
-            });
+            UnityMainThreadDispatcher.Instance().Enqueue(() => ClientError?.Invoke(error));
+            UnityMainThreadDispatcher.Instance().Enqueue(() => ConnectionStateChange?.Invoke());
         };
 
         ws.OnClose += (sender, close) =>
         {
-            UnityMainThreadDispatcher.Instance().Enqueue(() => OnClientDisconnected?.Invoke());
-            UnityMainThreadDispatcher.Instance().Enqueue(() => OnConnectionStateChange?.Invoke());
+            UnityMainThreadDispatcher.Instance().Enqueue(() => ClientDisconnected?.Invoke());
+            UnityMainThreadDispatcher.Instance().Enqueue(() => ConnectionStateChange?.Invoke());
             isConnectionReady = false;
-            
-                if (!_isReconnecting && close.Code != 1000)
+            isValidated = false;
+
+            UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                if (Application.isPlaying)
                 {
-                    if (_autoReconnect)
+                    if (!_isReconnecting && close.Code != 1000)
                     {
-                        _isReconnecting = true;
-                        UnityMainThreadDispatcher.Instance().Enqueue(() => StartReconnect?.Invoke());
+                        if (_autoReconnect)
+                        {
+                            _isReconnecting = true;
+                            Reconnect();
+                        }
                     }
                 }
+            });
         };
 
         ws.Connect();
     }
 
-    private IEnumerator Reconnect()
+    public void Reconnect()
     {
-        if (Application.isPlaying)
+        while (_isReconnecting && reconnectAttempt < maxReconnectAttempt && !IsConnected)
         {
-            while (_isReconnecting && reconnectAttempt < maxReconnectAttempt && !IsConnected)
-            {
-                Debug.Log("Attempting to reconnect... " + (reconnectAttempt + 1) + "/" + maxReconnectAttempt);
-                Connect(ws.Url.ToString());
+            Debug.Log("Attempting to reconnect... " + (reconnectAttempt + 1) + "/" + maxReconnectAttempt);
+            Connect(ws.Url.ToString(), clientData.username);
 
-                yield return new WaitForSeconds(ReconnectDelaySeconds);
-                reconnectAttempt++;
-            }
-
-            if (reconnectAttempt >= maxReconnectAttempt)
-            {
-                Debug.LogWarning("Reached max reconnect attempts: " + maxReconnectAttempt);
-            }
-
-            _isReconnecting = false;
-            reconnectAttempt = 0;
+            new WaitForSeconds(ReconnectDelaySeconds);
+            reconnectAttempt++;
         }
+
+        if (reconnectAttempt >= maxReconnectAttempt)
+        {
+            Debug.LogWarning("Reached max reconnect attempts: " + maxReconnectAttempt);
+        }
+
+        _isReconnecting = false;
+        reconnectAttempt = 0;
     }
 
     public void Dispose()
@@ -226,12 +220,18 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
         return ws.ReadyState;
     }
 
-    private IEnumerator SendPing()
+    public long GetLatency()
     {
-        Debug.Log("Ping outside");
+        if (latency.Equals(null))
+            return 0;
+        else
+            return latency;
+    }
+
+    public IEnumerator SendPing()
+    {
         while (IsConnected)
         {
-            Debug.Log("Ping");
             Message pingMessage = new Message(MessageType.PING, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
 
             SendMessage(JsonConvert.SerializeObject(pingMessage));
@@ -243,8 +243,11 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
 
     public void RequestValidation()
     {
-        Debug.Log("Requesting validation from server");
-        SendMessage("Requesting validation from server");
+        Message validationRequest = new Message();
+        validationRequest.Type = MessageType.VALIDATION_REQUEST;
+        validationRequest.Content = JsonConvert.SerializeObject(clientData);
+
+        SendMessage(JsonConvert.SerializeObject(validationRequest));
     }
 
     #endregion
@@ -267,11 +270,8 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
                 case MessageType.DISCONNECT:
                     // handle disconnect message
                     break;
-                case MessageType.USER_DATA_REQUEST:
-                    // handle user data request message
-                    break;
                 case MessageType.USER_DATA_RESPONSE:
-                    // handle user data response message
+                    HandleUserData(serverMessage.Content);
                     break;
                 case MessageType.GAME_STATE:
                     // handle game state message
@@ -297,7 +297,7 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
                 default:
                     if (MessageType.CUSTOM.Contains(serverMessage.Type))
                     {
-                        OnCustomMessage?.Invoke(serverMessage);
+                        CustomMessage?.Invoke(serverMessage);
                     }
                     else
                     {
@@ -315,6 +315,11 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
     private void HandlePong(string serverMessage)
     {
         latency = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - pingTimestamp;
+    }
+
+    private void HandleUserData(string serverMessage)
+    {
+
     }
 
     private void HandleValidation(string serverMessage)

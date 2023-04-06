@@ -17,13 +17,8 @@ public class User
     }
 
     public User() { }
-
-    //private void Start()
-    //{
-        
-    //}
-    //private void Update()
-    //{
-        
-    //}
+    public User(string username)
+    {
+        this.username = username;
+    }
 }
