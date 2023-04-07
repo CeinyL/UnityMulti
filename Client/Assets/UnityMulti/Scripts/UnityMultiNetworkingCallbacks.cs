@@ -15,7 +15,8 @@ public class UnityMultiNetworkingCallbacks : MonoBehaviour
 
     private void Awake()
     {
-        multiNetworking = UnityMultiNetworking.CreateInstance();
+        multiNetworking = UnityMultiNetworking.Instance;
+        multiNetworking.AddEventHandler();
         multiNetworking.CustomMessage += OnCustomMessage;
         multiNetworking.ClientError += OnClientError;
         multiNetworking.ClientConnected += OnClientConnected;

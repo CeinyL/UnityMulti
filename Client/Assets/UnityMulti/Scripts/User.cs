@@ -5,11 +5,13 @@ using UnityEngine;
 public class User
 {
     public string username { get; set; } = "";
-    public string userId { get; private set; } = "";
+    public string userID { get; private set; } = "";
+
+    public int? validation;
 
     public void SetUserId(string userId)
     {
-        this.userId = userId;
+        this.userID = userId;
     }
     public void SetUserName(string username)
     {

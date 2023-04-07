@@ -4,30 +4,28 @@ using System;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Collections;
+using System.Linq;
 
 [RequireComponent(typeof(UnityMainThreadDispatcher))]
-public class UnityMultiNetworking : MonoBehaviour, IDisposable
+public class UnityMultiNetworking : BaseSingleton<UnityMultiNetworking>, IDisposable
 {
-    #region variables
-    private static UnityMultiNetworking _instance;
+    protected override string GetSingletonName()
+    {
+        return "UnityMultiNetworking";
+    }
 
-    //private UnityMainThreadDispatcher ThreadDispatcher = UnityMainThreadDispatcher.Instance();
+    #region variables
     private WebSocket ws;
     public User clientData { get; private set; }
 
     public bool IsConnected => ws != null && ws.ReadyState == WebSocketState.Open;
-
+    
     public bool _autoReconnect = true;
     private bool _isReconnecting;
-    public float ReconnectDelaySeconds = 10f;
-    public int maxReconnectAttempt = 10;
-    private int reconnectAttempt = 0;
-
-    public static GameObject UnityMultiObject;
 
     public string connectionURL { get; private set; }
-    [HideInInspector]
-    public long pingTimestamp;
+
+    private long pingTimestamp;
     private long latency;
     private bool isConnectionReady = false;
     private bool isDisconnecting = false;
@@ -54,36 +52,10 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
     public delegate void InitialConnectionEvent();
     public event InitialConnectionEvent InitialConnection;
 
+    public delegate void ReconnectEvent(string url, User clientData, bool _isReconnecting);
+    public event ReconnectEvent Reconnect;
+
     #endregion
-
-    #region UnityMultiNetworking
-    private UnityMultiNetworking()
-    {
-
-    }
-
-    public static UnityMultiNetworking Instance
-    {
-        get
-        {
-            if (_instance == null)
-            {
-                _instance = new UnityMultiNetworking();
-            }
-            return _instance;
-        }
-        private set { }
-    }
-
-    public static UnityMultiNetworking CreateInstance()
-    {
-        if (Instance == null)
-        {
-            UnityMultiObject = new GameObject("UnityNetworking");
-            Instance = UnityMultiObject.AddComponent<UnityMultiNetworking>();
-        }
-        return Instance;
-    }
 
     private void OnDisable()
     {
@@ -93,24 +65,6 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
             Disconnect();
         }
     }
-
-    private void Awake()
-    {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-    }
-
-    private void Update()
-    {
-    }
-    #endregion
 
     #region connection
 
@@ -152,15 +106,12 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
             isValidated = false;
 
             UnityMainThreadDispatcher.Instance().Enqueue(() => {
-                if (Application.isPlaying)
+                if (!_isReconnecting && close.Code != 1000)
                 {
-                    if (!_isReconnecting && close.Code != 1000)
+                    if (_autoReconnect)
                     {
-                        if (_autoReconnect)
-                        {
-                            _isReconnecting = true;
-                            Reconnect();
-                        }
+                        _isReconnecting = true;
+                        Reconnect?.Invoke(ws.Url.ToString(), clientData, _isReconnecting);
                     }
                 }
             });
@@ -169,24 +120,9 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
         ws.Connect();
     }
 
-    public void Reconnect()
+    public void StopReconnecting()
     {
-        while (_isReconnecting && reconnectAttempt < maxReconnectAttempt && !IsConnected)
-        {
-            Debug.Log("Attempting to reconnect... " + (reconnectAttempt + 1) + "/" + maxReconnectAttempt);
-            Connect(ws.Url.ToString(), clientData.username);
-
-            new WaitForSeconds(ReconnectDelaySeconds);
-            reconnectAttempt++;
-        }
-
-        if (reconnectAttempt >= maxReconnectAttempt)
-        {
-            Debug.LogWarning("Reached max reconnect attempts: " + maxReconnectAttempt);
-        }
-
         _isReconnecting = false;
-        reconnectAttempt = 0;
     }
 
     public void Dispose()
@@ -237,7 +173,7 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
             SendMessage(JsonConvert.SerializeObject(pingMessage));
 
             pingTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            yield return new WaitForSeconds(1f);
+            yield return new WaitForSecondsRealtime(1f);
         }
     }
 
@@ -270,7 +206,7 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
                 case MessageType.DISCONNECT:
                     // handle disconnect message
                     break;
-                case MessageType.USER_DATA_RESPONSE:
+                case MessageType.VALIDATION_RESPONSE:
                     HandleUserData(serverMessage.Content);
                     break;
                 case MessageType.GAME_STATE:
@@ -324,8 +260,18 @@ public class UnityMultiNetworking : MonoBehaviour, IDisposable
 
     private void HandleValidation(string serverMessage)
     {
+        clientData = JsonConvert.DeserializeObject<User>(serverMessage);
 
+        if(clientData.validation == 1)
+        {
+
+        }
     }
 
+    public void AddEventHandler()
+    {
+        if (this.gameObject.GetComponent<UnityMultiEventHandler>() == null)
+            this.gameObject.AddComponent<UnityMultiEventHandler>();
+    }
     #endregion
 }
