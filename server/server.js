@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
-const userData = require('./App/userData');
+const messageHandler = require('./App/messageHandler')
 const messageTypes = require('./App/messageTypes');
+const DB = require('./App/database');
 
 let clients = {
 
@@ -16,24 +17,35 @@ const server = new WebSocket.Server({
   port: 8080
 });
 
+const db = new DB.database(
+  "localhost",
+  "root",
+  "betolo9528UM",
+  "mysql")
+
 const clientsLoop = async () => {
   while(true){
     for (const userId in clients) {
       console.log(""+clients[userId].userId);
+      
     }
+    //console.log(db.DBSTATE);
     await new Promise(resolve => setTimeout(resolve, 5000));
   }
 };
 
-process.argv.forEach(function (val, index, array) {
-  if(index==2&&val=="remote")  server.host='192.168.1.12';
-  else server.host='localhost';
+process.argv.forEach(function (val, index) {
+  if(index==2&&val=="remote");
 });
 
 
 clientsLoop();
+//db.Connect();
+HandleValidation(null,'{"Type": "ValidationRequest", "Content" : { "username" : "Betek" , "UserID" : "" } }');
+//console.log(db.Query("select * from user"));
 
-console.log('Starting WebSocket server: '+server.host);
+
+console.log('Starting WebSocket server: ');
 
 
 server.on('connection', (socket) => {
@@ -58,8 +70,11 @@ const HandleMessage = async (socket, message) => {
   try {
     const serverMessage = JSON.parse(message);
     switch (serverMessage.Type) {
+      case messageTypes.REQVALIDATION:
+        HandleValidation(socket,message);
+        break;
       case messageTypes.PING:
-        HandlePing(socket);
+        HandlePing(socket,message);
         break;
       case messageTypes.CONNECT:
         // handle connect message
@@ -107,40 +122,5 @@ const HandleMessage = async (socket, message) => {
   }
 };
 
-const HandlePing = async (socket) => {
-  message = {
-    type: messageTypes.PONG,
-    timestamp: Date.now(),
-  };
 
-  socket.send(JSON.stringify(message));
-};
 
-const getUserData = async (socket, Content) => {
-    let user = userData.user;
-    user = JSON.parse(Content);
-
-    if(user.userId == '') user.userId = await userData.createUserId();
-    if(user.username == '') user.username = await userData.createUsername();
-
-    console.log('Adding new client to dictionary');
-    clients[user.userId] = {
-      socket: socket,
-      userId: user.userId
-    };
-
-    let content = JSON.stringify(user);
-
-    message = {
-        Type: 'userData',
-        Content: content
-    }
-
-    for (let userId in clients) {
-      if (clients[userId].socket === socket) {
-          socket.send(JSON.stringify(message));
-          break;
-      }
-    }
-
-};

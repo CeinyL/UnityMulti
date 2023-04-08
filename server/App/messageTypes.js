@@ -1,3 +1,7 @@
+
+
+
+
 /// <summary>
 /// these messages are used check latency.
 /// </summary>
@@ -11,6 +15,8 @@ const DISCONNECT = "disconnect";
 /// <summary>
 /// these message types could be used to request/send user data from/to server.
 /// </summary>
+const REQVALIDATION = "ValidationRequest";
+const RESVALIDATION = "ValidationResponse";
 const USER_DATA_REQUEST = "userDataRequest";
 const USER_DATA_RESPONSE = "userDataResponse";
 /// <summary>
@@ -41,6 +47,8 @@ const SERVER_MESSAGE = "serverMessage";
 let CUSTOM = [];
 
 module.exports = {
+    RESVALIDATION,
+    REQVALIDATION,
     PING,
     PONG,
     CONNECT,
