@@ -69,6 +69,7 @@ server.on('connection', (socket) => {
 const HandleMessage = async (socket, message) => { 
   try {
     const serverMessage = JSON.parse(message);
+    console.log(serverMessage);
     switch (serverMessage.Type) {
       case messageTypes.REQVALIDATION:
         HandleValidation(socket,message);

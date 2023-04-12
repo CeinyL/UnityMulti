@@ -1,124 +1,277 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using WebSocketSharp;
 using System;
-using UnityEditor;
+using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Collections;
+using System.Linq;
 
-public class UnityMultiNetworking : MonoBehaviour
+[RequireComponent(typeof(UnityMainThreadDispatcher))]
+public class UnityMultiNetworking : BaseSingleton<UnityMultiNetworking>, IDisposable
 {
-    public ConnectionManager connection { get; set; } = ConnectionManager.Instance;
-    private static UnityMultiNetworking _instance;
-
-    public User userData { get; private set; }
-
-    public string connectionURL { get; private set; }
-    private WebSocketState connectionState;
-
-    public delegate void ServerMessageHandler(string message);
-    public event ServerMessageHandler OnServerMessage;
-
-    public delegate void ErrorHandler(string error);
-    public event ErrorHandler OnClientError;
-
-    public delegate void ConnectedHandler();
-    public event ConnectedHandler OnClientConnected;
-
-    public delegate void DisconnectedHandler();
-    public event DisconnectedHandler OnClientDisconnected;
-
-    public delegate void ConnectionStateHandler(WebSocketState connectionState);
-    public event ConnectionStateHandler OnConnectionStateChange;
-
-    private UnityMultiNetworking()
+    protected override string GetSingletonName()
     {
-
+        return "UnityMultiNetworking";
     }
 
-    public static UnityMultiNetworking Instance
+    #region variables
+    private WebSocket ws;
+    public User clientData { get; private set; }
+
+    public bool IsConnected => ws != null && ws.ReadyState == WebSocketState.Open;
+    
+    public bool _autoReconnect = true;
+    private bool _isReconnecting;
+
+    public string connectionURL { get; private set; }
+
+    private long pingTimestamp;
+    private long latency;
+    private bool isConnectionReady = false;
+    private bool isDisconnecting = false;
+    private bool isValidated = false;
+    #endregion
+
+    #region events
+
+    public delegate void ServerMessageEvent(Message serverMessage);
+    public event ServerMessageEvent CustomMessage;
+
+    public delegate void ErrorEvent(ErrorEventArgs error);
+    public event ErrorEvent ClientError;
+
+    public delegate void ConnectedEvent();
+    public event ConnectedEvent ClientConnected;
+
+    public delegate void DisconnectedEvent();
+    public event DisconnectedEvent ClientDisconnected;
+
+    public delegate void ConnectionStateEvent();
+    public event ConnectionStateEvent ConnectionStateChange;
+
+    public delegate void InitialConnectionEvent();
+    public event InitialConnectionEvent InitialConnection;
+
+    public delegate void ReconnectEvent(string url, User clientData, bool _isReconnecting);
+    public event ReconnectEvent Reconnect;
+
+    #endregion
+
+    private void OnDisable()
     {
-        get
+        if (!isDisconnecting)
         {
-            if (_instance == null)
-            {
-                _instance = new UnityMultiNetworking();
-            }
-            return _instance;
+            isDisconnecting = true;
+            Disconnect();
         }
     }
 
-    public void Connect(string url)
-    {
-        connectionURL = url;
-        userData = new User();
-        CreateConnection();
-    }
+    #region connection
 
-    public void Connect(string url, User userData)
+    public void Connect(string url, string username)
     {
         connectionURL = url;
-        this.userData = userData;
+        clientData = new User(username);
         CreateConnection();
     }
 
     private void CreateConnection()
     {
-        connection.OnConnected += OnConnected;
-        connection.OnMessageReceived += OnMessage;
-        connection.OnError += OnError;
-        connection.OnDisconnected += OnDisconnected;
-        connection.OnStateChanged += OnStateChanged;
-        Debug.Log("Connecting to server: "+connectionURL);
-        connection.Connect(connectionURL);
+        ws = new WebSocket(connectionURL);
+
+        ws.OnOpen += (sender, args) =>
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(() => InitialConnection?.Invoke());
+            UnityMainThreadDispatcher.Instance().Enqueue(() => ConnectionStateChange?.Invoke());
+            UnityMainThreadDispatcher.Instance().Enqueue(() => RequestValidation());
+            //UnityMainThreadDispatcher.Instance().Enqueue(() => StartPinging?.Invoke());
+        };
+
+        ws.OnMessage += (sender, message) =>
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(() => OnServerMessage(message.Data));          
+        };
+
+        ws.OnError += (sender, error) =>
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(() => ClientError?.Invoke(error));
+            UnityMainThreadDispatcher.Instance().Enqueue(() => ConnectionStateChange?.Invoke());
+        };
+
+        ws.OnClose += (sender, close) =>
+        {
+            UnityMainThreadDispatcher.Instance().Enqueue(() => ClientDisconnected?.Invoke());
+            UnityMainThreadDispatcher.Instance().Enqueue(() => ConnectionStateChange?.Invoke());
+            isConnectionReady = false;
+            isValidated = false;
+
+            UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                if (!_isReconnecting && close.Code != 1000)
+                {
+                    if (_autoReconnect)
+                    {
+                        _isReconnecting = true;
+                        Reconnect?.Invoke(ws.Url.ToString(), clientData, _isReconnecting);
+                    }
+                }
+            });
+        };
+
+        ws.Connect();
+    }
+
+    public void StopReconnecting()
+    {
+        _isReconnecting = false;
+    }
+
+    public void Dispose()
+    {
+        if (ws != null && ws.ReadyState == WebSocketState.Open)
+        {
+            ws.Close(1000, "Intentional disconnect");
+        }
     }
 
     public void Disconnect()
     {
-        Debug.Log("Disconnect called");
-        connection.Dispose();
+        isDisconnecting = true;
+        Dispose();
     }
+
+    #endregion
+
+    #region client_actions
 
     public new void SendMessage(string message)
     {
-        connection.SendMessage(message);
+        if (IsConnected)
+        {
+            ws.Send(message);
+        }
     }
 
-    public virtual void OnMessage(string rec_message)
+    public WebSocketState getState()
     {
-        OnServerMessage?.Invoke(rec_message);
+        return ws.ReadyState;
     }
 
-    public virtual void OnConnected()
+    public long GetLatency()
     {
-        OnClientConnected?.Invoke();
-        
+        if (latency.Equals(null))
+            return 0;
+        else
+            return latency;
     }
 
-    public virtual void OnError(string error)
+    public IEnumerator SendPing()
     {
-        OnClientError?.Invoke(error);
+        while (IsConnected)
+        {
+            Message pingMessage = new Message(MessageType.PING, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
+
+            SendMessage(JsonConvert.SerializeObject(pingMessage));
+
+            pingTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            yield return new WaitForSecondsRealtime(1f);
+        }
     }
 
-    public virtual void OnDisconnected()
+    public void RequestValidation()
     {
-        OnClientDisconnected?.Invoke();
+        Message validationRequest = new Message();
+        validationRequest.Type = MessageType.VALIDATION_REQUEST;
+        validationRequest.Content = JsonConvert.SerializeObject(clientData);
+
+        SendMessage(JsonConvert.SerializeObject(validationRequest));
     }
 
-    public virtual void OnStateChanged()
+    #endregion
+
+    #region message_handlers
+
+    private void OnServerMessage(string message)
     {
-        connectionState = connection.getState();
-        OnConnectionStateChange?.Invoke(connectionState);
+        try
+        {
+            Message serverMessage = JsonConvert.DeserializeObject<Message>(message);
+            switch (serverMessage.Type)
+            {
+                case MessageType.PONG:
+                    HandlePong(serverMessage.Content);
+                    break;
+                case MessageType.CONNECT:
+                    // handle connect message
+                    break;
+                case MessageType.DISCONNECT:
+                    // handle disconnect message
+                    break;
+                case MessageType.VALIDATION_RESPONSE:
+                    HandleUserData(serverMessage.Content);
+                    break;
+                case MessageType.GAME_STATE:
+                    // handle game state message
+                    break;
+                case MessageType.PLAYER_POSITION:
+                    // handle player position message
+                    break;
+                case MessageType.PLAYER_ROTATION:
+                    // handle player rotation message
+                    break;
+                case MessageType.PLAYER_SCALE:
+                    // handle player scale message
+                    break;
+                case MessageType.SERVER_STATUS:
+                    // handle server status message
+                    break;
+                case MessageType.CHAT_MESSAGE:
+                    // handle chat message
+                    break;
+                case MessageType.SERVER_MESSAGE:
+                    // handle server message
+                    break;
+                default:
+                    if (MessageType.CUSTOM.Contains(serverMessage.Type))
+                    {
+                        CustomMessage?.Invoke(serverMessage);
+                    }
+                    else
+                    {
+                        Debug.Log("Unknown message type: " + serverMessage.Type);
+                    }
+                    break;
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError("Recevied message error: " + e.Message + " \nMessage from server: " + message);
+        }
     }
 
-    public void OnApplicationQuit()
+    private void HandlePong(string serverMessage)
     {
-        Debug.Log("on app quit");
-        Disconnect();
+        latency = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - pingTimestamp;
     }
 
-    public void OnDisable()
+    private void HandleUserData(string serverMessage)
     {
-        Debug.Log("on disable");
-        Disconnect();
+
     }
+
+    private void HandleValidation(string serverMessage)
+    {
+        clientData = JsonConvert.DeserializeObject<User>(serverMessage);
+
+        if(clientData.validation == 1)
+        {
+
+        }
+    }
+
+    public void AddEventHandler()
+    {
+        if (this.gameObject.GetComponent<UnityMultiEventHandler>() == null)
+            this.gameObject.AddComponent<UnityMultiEventHandler>();
+    }
+    #endregion
 }

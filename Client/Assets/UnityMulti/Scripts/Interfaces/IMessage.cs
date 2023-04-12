@@ -17,8 +17,8 @@ public class MessageType
     /// <summary>
     /// these message types could be used to request/send user data from/to server.
     /// </summary>
-    public const string USER_DATA_REQUEST = "userDataRequest";
-    public const string USER_DATA_RESPONSE = "userDataResponse";
+    public const string VALIDATION_REQUEST = "validationRequest";
+    public const string VALIDATION_RESPONSE = "validationResponse";
     /// <summary>
     /// something like closed instantions of the game (e.g. dungeons, missions)?
     /// </summary>
