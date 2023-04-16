@@ -23,6 +23,8 @@ public class UnityMultiNetworkingCallbacks : MonoBehaviour
         multiNetworking.ClientDisconnected += OnClientDisconnected;
         multiNetworking.ConnectionStateChange += OnConnectionStateChange;
         multiNetworking.InitialConnection += OnInitialConnection;
+        multiNetworking.ValidationSuccess += OnValidationSuccess;
+        multiNetworking.ValidationError += OnValidationError;
     }
 
     public virtual void OnClientError(ErrorEventArgs error)
@@ -56,5 +58,15 @@ public class UnityMultiNetworkingCallbacks : MonoBehaviour
     public virtual void OnInitialConnection()
     {
         Debug.Log("Validating user data");
+    }
+
+    public virtual void OnValidationSuccess()
+    {
+        Debug.Log("Successful validation");
+    }
+
+    public virtual void OnValidationError(UnityMultiValidationHelper.ErrorCode errorCode, string ErrorMessage)
+    {
+        Debug.Log("Validation error: \nErrorCode: " + errorCode + "\nErrorMessage: " + ErrorMessage);
     }
 }

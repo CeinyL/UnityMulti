@@ -14,25 +14,27 @@ public class UnityMultiNetworking : BaseSingleton<UnityMultiNetworking>, IDispos
         return "UnityMultiNetworking";
     }
 
-    #region variables
     private WebSocket ws;
-    public User clientData { get; private set; }
+    public UnityMultiUser clientData { get; private set; }
 
-    public bool IsConnected => ws != null && ws.ReadyState == WebSocketState.Open;
-    
-    public bool _autoReconnect = true;
-    private bool _isReconnecting;
+    public bool IsConnected
+    {
+        get { return ws != null && ws.ReadyState == WebSocketState.Open; }
+        private set { }
+    }
 
     public string connectionURL { get; private set; }
+    public bool _autoReconnect = true;
+    private bool _isReconnecting;
+    public float ReconnectDelaySeconds = 10f;
+    public int maxReconnectAttempt = 10;
+    private int reconnectAttempt = 0;
 
     private long pingTimestamp;
     private long latency;
-    private bool isConnectionReady = false;
-    private bool isDisconnecting = false;
-    private bool isValidated = false;
-    #endregion
-
-    #region events
+    public bool isConnectionReady { get; private set; } = false;
+    public bool isDisconnecting { get; private set; } = false;
+    public bool isValidated { get; private set; } = false;
 
     public delegate void ServerMessageEvent(Message serverMessage);
     public event ServerMessageEvent CustomMessage;
@@ -52,11 +54,23 @@ public class UnityMultiNetworking : BaseSingleton<UnityMultiNetworking>, IDispos
     public delegate void InitialConnectionEvent();
     public event InitialConnectionEvent InitialConnection;
 
-    public delegate void ReconnectEvent(string url, User clientData, bool _isReconnecting);
-    public event ReconnectEvent Reconnect;
+    public delegate void ValidationSuccessEvent();
+    public event ValidationSuccessEvent ValidationSuccess;
 
-    #endregion
+    public delegate void ValidationErrorEvent(UnityMultiValidationHelper.ErrorCode errorCode, string ErrorMessage);
+    public event ValidationErrorEvent ValidationError;
 
+    private delegate void ReconnectHandler(CloseEventArgs close);
+    private event ReconnectHandler ReconnectEvent;
+
+    protected override void Awake()
+    {
+        base.Awake();
+        ReconnectEvent += Reconnect;
+    }
+    /// <summary>
+    /// 
+    /// </summary>
     private void OnDisable()
     {
         if (!isDisconnecting)
@@ -66,15 +80,32 @@ public class UnityMultiNetworking : BaseSingleton<UnityMultiNetworking>, IDispos
         }
     }
 
-    #region connection
-
-    public void Connect(string url, string username)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="url"></param>
+    public void Connect(string url)
     {
         connectionURL = url;
-        clientData = new User(username);
+        clientData = new UnityMultiUser();
         CreateConnection();
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="url"></param>
+    /// <param name="username"></param>
+    public void Connect(string url, string username)
+    {
+        connectionURL = url;
+        clientData = new UnityMultiUser(username);
+        CreateConnection();
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
     private void CreateConnection()
     {
         ws = new WebSocket(connectionURL);
@@ -84,7 +115,6 @@ public class UnityMultiNetworking : BaseSingleton<UnityMultiNetworking>, IDispos
             UnityMainThreadDispatcher.Instance().Enqueue(() => InitialConnection?.Invoke());
             UnityMainThreadDispatcher.Instance().Enqueue(() => ConnectionStateChange?.Invoke());
             UnityMainThreadDispatcher.Instance().Enqueue(() => RequestValidation());
-            //UnityMainThreadDispatcher.Instance().Enqueue(() => StartPinging?.Invoke());
         };
 
         ws.OnMessage += (sender, message) =>
@@ -104,27 +134,53 @@ public class UnityMultiNetworking : BaseSingleton<UnityMultiNetworking>, IDispos
             UnityMainThreadDispatcher.Instance().Enqueue(() => ConnectionStateChange?.Invoke());
             isConnectionReady = false;
             isValidated = false;
-
-            UnityMainThreadDispatcher.Instance().Enqueue(() => {
-                if (!_isReconnecting && close.Code != 1000)
-                {
-                    if (_autoReconnect)
-                    {
-                        _isReconnecting = true;
-                        Reconnect?.Invoke(ws.Url.ToString(), clientData, _isReconnecting);
-                    }
-                }
-            });
+            ReconnectEvent?.Invoke(close);
         };
 
         ws.Connect();
     }
 
-    public void StopReconnecting()
+    /// <summary>
+    /// Auto reconnect method
+    /// </summary>
+    private void Reconnect(CloseEventArgs close)
     {
-        _isReconnecting = false;
+        if (!_isReconnecting && close.Code != 1000)
+        {
+            if (_autoReconnect)
+            {
+                UnityMainThreadDispatcher.Instance().Enqueue(() => {
+                    if (IsApplicationPlaying())
+                    {
+
+                        _isReconnecting = true;
+
+                        while (_isReconnecting && reconnectAttempt < maxReconnectAttempt && !IsConnected)
+                        {
+                            Debug.Log("Attempting to reconnect... " + (reconnectAttempt + 1) + "/" + maxReconnectAttempt);
+                            Connect(ws.Url.ToString(), clientData.Username);
+
+                            new WaitForSeconds(ReconnectDelaySeconds);
+                            reconnectAttempt++;
+                        }
+
+                        if (reconnectAttempt >= maxReconnectAttempt)
+                        {
+                            Debug.LogWarning("Reached max reconnect attempts: " + maxReconnectAttempt);
+                        }
+
+                        _isReconnecting = false;
+                        reconnectAttempt = 0;
+                    }
+                });
+            }
+        }
+        
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     public void Dispose()
     {
         if (ws != null && ws.ReadyState == WebSocketState.Open)
@@ -133,16 +189,19 @@ public class UnityMultiNetworking : BaseSingleton<UnityMultiNetworking>, IDispos
         }
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     public void Disconnect()
     {
         isDisconnecting = true;
         Dispose();
     }
 
-    #endregion
-
-    #region client_actions
-
+    /// <summary>
+    /// Send any string message to server
+    /// </summary>
+    /// <param name="message"></param>
     public new void SendMessage(string message)
     {
         if (IsConnected)
@@ -151,11 +210,31 @@ public class UnityMultiNetworking : BaseSingleton<UnityMultiNetworking>, IDispos
         }
     }
 
+    /// <summary>
+    /// Variant of send message which send message to server in form of JSON
+    /// </summary>
+    /// <param name="message"></param>
+    public void SendMessage(Message message)
+    {
+        if (IsConnected)
+        {
+            ws.Send(JsonConvert.SerializeObject(message));
+        }
+    }
+
+    /// <summary>
+    /// return current websocket state
+    /// </summary>
+    /// <returns></returns>
     public WebSocketState getState()
     {
         return ws.ReadyState;
     }
 
+    /// <summary>
+    /// return latency
+    /// </summary>
+    /// <returns></returns>
     public long GetLatency()
     {
         if (latency.Equals(null))
@@ -164,32 +243,32 @@ public class UnityMultiNetworking : BaseSingleton<UnityMultiNetworking>, IDispos
             return latency;
     }
 
-    public IEnumerator SendPing()
+    /// <summary>
+    /// set timestamp of last ping
+    /// </summary>
+    /// <param name="pingTimestamp"></param>
+    public void setTimeStamp(long pingTimestamp)
     {
-        while (IsConnected)
-        {
-            Message pingMessage = new Message(MessageType.PING, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
-
-            SendMessage(JsonConvert.SerializeObject(pingMessage));
-
-            pingTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            yield return new WaitForSecondsRealtime(1f);
-        }
+        this.pingTimestamp = pingTimestamp;
     }
 
-    public void RequestValidation()
+    /// <summary>
+    /// send message with validation request to server
+    /// </summary>
+    private void RequestValidation()
     {
         Message validationRequest = new Message();
         validationRequest.Type = MessageType.VALIDATION_REQUEST;
         validationRequest.Content = JsonConvert.SerializeObject(clientData);
+        validationRequest.Timestamp = GetTimeNow();
 
-        SendMessage(JsonConvert.SerializeObject(validationRequest));
+        SendMessage(validationRequest);
     }
 
-    #endregion
-
-    #region message_handlers
-
+    /// <summary>
+    /// Base server message handler
+    /// </summary>
+    /// <param name="message"></param>
     private void OnServerMessage(string message)
     {
         try
@@ -207,7 +286,7 @@ public class UnityMultiNetworking : BaseSingleton<UnityMultiNetworking>, IDispos
                     // handle disconnect message
                     break;
                 case MessageType.VALIDATION_RESPONSE:
-                    HandleUserData(serverMessage.Content);
+                    HandleValidation(serverMessage.Content);
                     break;
                 case MessageType.GAME_STATE:
                     // handle game state message
@@ -248,30 +327,73 @@ public class UnityMultiNetworking : BaseSingleton<UnityMultiNetworking>, IDispos
         }
     }
 
+    /// <summary>
+    /// method which set latency based on server message response time
+    /// </summary>
+    /// <param name="serverMessage"></param>
     private void HandlePong(string serverMessage)
     {
         latency = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - pingTimestamp;
     }
 
-    private void HandleUserData(string serverMessage)
-    {
-
-    }
-
+    /// <summary>
+    /// validation handler
+    /// </summary>
+    /// <param name="serverMessage"></param>
     private void HandleValidation(string serverMessage)
     {
-        clientData = JsonConvert.DeserializeObject<User>(serverMessage);
+        UnityMultiValidationHelper.ValidationResult validationMessage = JsonConvert.DeserializeObject<UnityMultiValidationHelper.ValidationResult>(serverMessage);
 
-        if(clientData.validation == 1)
+        if (validationMessage.Validated)
         {
-
+            isValidated = validationMessage.Validated;
+            ValidationSuccess?.Invoke();
+            StartCoroutine(SendPing());
+        } else
+        {
+            ValidationError?.Invoke(validationMessage.ErrorCode, UnityMultiValidationHelper.ValidationError(validationMessage));
+            Disconnect();
         }
     }
 
+    /// <summary>
+    /// Coroutine that send ping to server every second to check response time
+    /// </summary>
+    /// <returns></returns>
+    public IEnumerator SendPing()
+    {
+        while (IsConnected)
+        {
+            Message pingMessage = new Message(MessageType.PING, GetTimeNow().ToString(), GetTimeNow());
+
+            SendMessage(pingMessage);
+
+            setTimeStamp(GetTimeNow());
+            yield return new WaitForSecondsRealtime(1f);
+        }
+    }
+
+    /// <summary>
+    /// add event handler script to the object if it doesn't exist yet
+    /// </summary>
     public void AddEventHandler()
     {
         if (this.gameObject.GetComponent<UnityMultiEventHandler>() == null)
             this.gameObject.AddComponent<UnityMultiEventHandler>();
     }
-    #endregion
+    /// <summary>
+    /// Method used to get current time
+    /// </summary>
+    /// <returns>returns time now as long</returns>
+    private long GetTimeNow()
+    {
+        return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    }
+
+    private bool IsApplicationPlaying()
+    {
+        return Application.isPlaying;
+    }
+
 }
+
