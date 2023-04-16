@@ -262,10 +262,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   multiNetworking: {fileID: 0}
-<<<<<<< Updated upstream
   connectionState: 0
-=======
->>>>>>> Stashed changes
   url: ws://localhost:8080
   ms: 0
 --- !u!1 &963194225

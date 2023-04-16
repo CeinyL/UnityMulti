@@ -1,21 +1,24 @@
 const WebSocket = require('ws');
-const messageHandler = require('./App/messageHandler')
+const msghand = require('./App/messageHandler')
 const messageTypes = require('./App/messageTypes');
 const DB = require('./App/database');
 
-let clients = {
+const { room } = require('./App/room');
+
+let Users = {
 
 };
 
-let message = {
-  Type: '',
-  Content: ''
+let Rooms =
+{
+
 };
 
 const server = new WebSocket.Server({
   host: 'localhost',
   port: 8080
 });
+
 
 const db = new DB.database(
   "localhost",
@@ -25,8 +28,8 @@ const db = new DB.database(
 
 const clientsLoop = async () => {
   while(true){
-    for (const userId in clients) {
-      console.log(""+clients[userId].userId);
+    for (const userId in Users) {
+      console.log(""+Users[userId].id);
       
     }
     //console.log(db.DBSTATE);
@@ -38,15 +41,23 @@ process.argv.forEach(function (val, index) {
   if(index==2&&val=="remote");
 });
 
-
+/*let message = 
+    {
+      Type: 'Join/create/leave',
+      Content:{
+        RoomID : 111111,
+        Password : 'null'
+      },
+      Timestamp: Date.now() // CHANGE LATER
+    };
+*///console.log(message);
 clientsLoop();
 //db.Connect();
-HandleValidation(null,'{"Type": "ValidationRequest", "Content" : { "username" : "Betek" , "UserID" : "" } }');
+
 //console.log(db.Query("select * from user"));
 
 
 console.log('Starting WebSocket server: ');
-
 
 server.on('connection', (socket) => {
     console.log('Client connected');
@@ -57,9 +68,9 @@ server.on('connection', (socket) => {
   
     socket.on('close', () => {
       console.log('Client disconnected');
-      for (let userId in clients) {
-        if (clients[userId].socket === socket) {
-            delete clients[userId];
+      for (let userId in Users) {
+        if (Users[userId].socket === socket) {
+            delete Users[userId];
             break;
         }
       }
@@ -67,18 +78,20 @@ server.on('connection', (socket) => {
 });
 
 const HandleMessage = async (socket, message) => { 
-  try {
+  try 
+  {
     const serverMessage = JSON.parse(message);
     console.log(serverMessage);
     switch (serverMessage.Type) {
       case messageTypes.REQVALIDATION:
-        HandleValidation(socket,message);
+        let user = await msghand.HandleValidation(socket,message);
+        Users[user.id]=user;
         break;
       case messageTypes.PING:
-        HandlePing(socket,message);
+        msghand.HandlePing(socket,message);
         break;
-      case messageTypes.CONNECT:
-        // handle connect message
+      case messageTypes.CREATEROOM:
+        msghand.HandleCreateRoom();
         break;
       case messageTypes.DISCONNECT:
         // handle disconnect message
@@ -118,7 +131,9 @@ const HandleMessage = async (socket, message) => {
         }
         break;
     }
-  } catch (e) {
+  } 
+  catch (e) 
+  {
     console.error('Received message error:', e.message, '\nMessage from server:', message);
   }
 };

@@ -1,6 +1,9 @@
 const userData = require('./userData');
+const messageTypes = require('./messageTypes');
+let user =
+{
 
-let userList = [];
+}
 
 let message = {
     Type: '',
@@ -29,18 +32,21 @@ const getUserData = async (Content) => {
 const HandleValidation =  async (socket,msg) => 
 {
   let jsonmsg = JSON.parse(msg)
+  let content = JSON.parse(jsonmsg.Content)
   let id = await userData.createUserId();
-  let usr= "";
+  let usrn= "";
   /// ErrorCode 
   /// 0 - succes
   /// 1 - wrong username
   /// 2 - later
   let isErrorCode = 1;
   let isValid = false;
-  if(jsonmsg.Content.username==""||jsonmsg.Content.username==null)usr=id;
-  else usr=jsonmsg.Content.username;
   
-  if(jsonmsg.Content.username.localeCompare('Betek')==0)// case sensitive with no accents
+  if(content.username==""||content.username==null)usrn=id;
+  else usrn=content.username;
+
+  if(content.username=="betek") //case sensetive only
+  //if(jsonmsg.Content.username.localeCompare("Betek")==0)// case sensitive with no accents
   {
     isValid = true
     isErrorCode = 0;
@@ -52,14 +58,19 @@ const HandleValidation =  async (socket,msg) =>
     Content : 
     {
       UserID : id,
-      Username : usr,
+      Username : usrn,
       Validated : isValid,
       ErrorCode : isErrorCode
     }
 
   }
+  user.id=id;
+  user.name=usrn;
+  user.socket=socket;
+  user.valid=isValid;
   console.log(message);
-  socket.send(JSON.stringify(message));
+  if(socket!=null)socket.send(JSON.stringify(message));
+  return user;
 }
 const HandlePing = async (socket,msg) => {
     message = 
@@ -69,10 +80,23 @@ const HandlePing = async (socket,msg) => {
     };
     socket.send(JSON.stringify(message));
   };
-  
+///
+///ROOMS
+///
+const HandleCreateRoom = async (socket,msg) =>
+{
+  let jsonmsg = JSON.parse(msg)
+  let content = JSON.parse(jsonmsg.Content)
+}
 
+
+
+
+///
+///ROOMS END
+///
 module.exports = {
-    startupMessage,
     HandleValidation,
+    HandleCreateRoom,
     HandlePing
   };
