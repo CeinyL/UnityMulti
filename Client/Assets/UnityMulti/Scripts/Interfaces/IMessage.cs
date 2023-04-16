@@ -51,18 +51,27 @@ public interface IMessage
 {
     public string Type { get; set; }
     public string Content { get; set; }
+    public long Timestamp { get; set; }
 }
 
 public class Message : IMessage
 {
     public string Type { get; set; }
     public string Content { get; set; }
+    public long Timestamp { get; set; }
 
+    public Message(string type, string content, long timestamp)
+    {
+        this.Type = type;
+        this.Content = content;
+        this.Timestamp = timestamp;
+    }
     public Message(string type, string content)
     {
         this.Type = type;
         this.Content = content;
     }
+
     public Message(string type)
     {
         this.Type = type;

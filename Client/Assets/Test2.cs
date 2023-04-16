@@ -17,4 +17,8 @@ public class Test2 : UnityMultiNetworkingCallbacks
         //this.ms = multiNetworking.GetLatency();
     }
 
+    public override void OnClientConnected()
+    {
+        base.OnClientConnected();
+    }
 }

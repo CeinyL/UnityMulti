@@ -62,9 +62,10 @@
     <Compile Include="Assets\UnityMulti\Libraries\UnityMainThreadDispatcher\UnityMainThreadDispatcher.cs" />
     <Compile Include="Assets\Test2.cs" />
     <Compile Include="Assets\UnityMulti\Scripts\UnityMultiNetworking.cs" />
-    <Compile Include="Assets\UnityMulti\Scripts\User.cs" />
+    <Compile Include="Assets\UnityMulti\Scripts\UnityMultiUser.cs" />
     <Compile Include="Assets\UnityMulti\Scripts\Interfaces\IMessage.cs" />
     <Compile Include="Assets\UnityMulti\Scripts\UnityMultiNetworkingCallbacks.cs" />
+    <Compile Include="Assets\UnityMulti\Scripts\UnityMultiValidationHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\UnityMulti\Libraries\websocket-sharp.dll" />
